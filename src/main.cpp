@@ -1,48 +1,60 @@
-#include <string.h>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <malloc.h>
-#include <unistd.h>
-#include <stdio.h>
 #include <fcntl.h>
+
+#include <coreinit/exit.h>
+#include <proc_ui/procui.h>
 #include <whb/log_udp.h>
 #include <sysapp/launch.h>
-#include <coreinit/title.h>
+#include <coreinit/thread.h>
+#include <coreinit/foreground.h>
 
 #include "utils/logger.h"
 #include "dynamic.h"
 #include "kernel.h"
-#include "main.h"
 #include "ios_exploit.h"
 
 extern "C" void OSForceFullRelaunch();
+
+bool CheckRunning() {
+    switch (ProcUIProcessMessages(true)) {
+        case PROCUI_STATUS_EXITING: {
+            return false;
+        }
+        case PROCUI_STATUS_RELEASE_FOREGROUND: {
+            ProcUIDrawDoneRelease();
+            break;
+        }
+        case PROCUI_STATUS_IN_FOREGROUND: {
+            break;
+        }
+        case PROCUI_STATUS_IN_BACKGROUND:
+        default:
+            break;
+    }
+    return true;
+}
 
 extern "C" uint32_t _start(int argc, char **argv) {
     doKernelSetup();
     InitFunctionPointers();
 
     WHBLogUdpInit();
+    DEBUG_FUNCTION_LINE("Hello from fw_img_payload");
 
-    DEBUG_FUNCTION_LINE("Hello from cfw_booter");
-    
     ExecuteIOSExploit();
 
-    OSForceFullRelaunch();    
+    DEBUG_FUNCTION_LINE("IOSU Exploit done");
+
+    OSForceFullRelaunch();
     SYSLaunchMenu();
 
-    if (
-            OSGetTitleID() == 0x000500101004A200L || // mii maker eur
-            OSGetTitleID() == 0x000500101004A100L || // mii maker usa
-            OSGetTitleID() == 0x000500101004A000L) {   // mii maker jpn
-            
-        DEBUG_FUNCTION_LINE("We are in mii maker");
-        // return to mii maker.
-        return ( (int (*)(int, char **))(*(unsigned int*)0x1005E040) )(argc, argv);
-    } else {
-        DEBUG_FUNCTION_LINE("We are in another payload");
-        uint32_t result = 0;
-        result |= 4; // Proc UI loop
-        return result;
+    ProcUIInit(OSSavesDone_ReadyToRelease);
+    while (CheckRunning()) {
+        // wait.
+        OSSleepTicks(OSMillisecondsToTicks(100));
     }
+    ProcUIShutdown();
+
+    DEBUG_FUNCTION_LINE("Byebye");
+    _Exit(0);
     return 0;
 }
