@@ -26,8 +26,6 @@ extern "C" uint32_t _start(int argc, char **argv) {
     DEBUG_FUNCTION_LINE("Hello from cfw_booter");
     
     ExecuteIOSExploit();
-    
-    revertMainHook();
 
     OSForceFullRelaunch();    
     SYSLaunchMenu();
