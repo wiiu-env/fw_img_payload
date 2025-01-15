@@ -69,7 +69,45 @@ static const char os_launch_hook[] = {
 	0x05, 0x0b, 0xcf, 0xfc, 0x05, 0x05, 0x99, 0x70, 0x05, 0x05, 0x99, 0x7e,
 };
 
+/* from stoopwafel, allows unencrypted fw.img
+ancast_crypt_check:
+    .thumb
+    bx pc 
+    nop
+    .arm
+    ldr r7, =0x010001A0 @ device type offset
+    ldrh r7, [r7]       @ get device type
+    tst r7, #1          @ set bit 0 at the u16 at 0x1A0 for no-crypt mode
+    bne ancast_no_crypt
+
+    add r7, sp, #0x24  
+    str r7, [sp, #0x18]
+    bx lr
+
+ancast_no_crypt:
+    pop {r4-r7, lr}
+    add sp, #0x10
+    mov r0, #0
+    bx lr
+
+*/
+static const char ancast_decrypt_hook[] = {
+	0x78, 0x47, 0x00, 0xbf, 0x24, 0x70, 0x9f, 0xe5, 
+	0xb0, 0x70, 0xd7, 0xe1, 0x01, 0x00, 0x17, 0xe3, 
+	0x02, 0x00, 0x00, 0x1a, 0x24, 0x70, 0x8d, 0xe2, 
+	0x18, 0x70, 0x8d, 0xe5, 0x1e, 0xff, 0x2f, 0xe1, 
+	0xf0, 0x40, 0xbd, 0xe8, 0x10, 0xd0, 0x8d, 0xe2, 
+	0x00, 0x00, 0xa0, 0xe3, 0x1e, 0xff, 0x2f, 0xe1, 
+	0xa0, 0x01, 0x00, 0x01, 
+};
+
 static const char sd_path[] = "/vol/sdcard";
+
+static u32 generate_bl_t(u32 from, u32 to){
+	s32 bl_offs = (((s32)to - (s32)(from)) - 4) / 2;
+	u32 bl_insn = 0xF000F800 | ((u32)bl_offs & 0x7FF) | ((((u32)bl_offs >> 11) & 0x3FF) << 16);
+	return bl_insn;
+}
 
 int _main()
 {
@@ -103,7 +141,7 @@ int _main()
 
 	int i;
 	for (i = 0; i < 32; i++)
-		if (i < 11)
+		if (i < sizeof(sd_path))
 			((char*)(0x050663B4 - 0x05000000 + 0x081C0000))[i] = sd_path[i];
 		else
 			((char*)(0x050663B4 - 0x05000000 + 0x081C0000))[i] = (char)0;
@@ -122,6 +160,12 @@ int _main()
 
 	for (i = 0; i < sizeof(os_launch_hook); i++)
 		((char*)(0x05059938 - 0x05000000 + 0x081C0000))[i] = os_launch_hook[i];
+
+	u32 ancast_hook_start = 0x05059938 + sizeof(os_launch_hook);
+	for (i = 0; i < sizeof(ancast_decrypt_hook); i++)
+		((char*)(ancast_hook_start - 0x05000000 + 0x081C0000))[i] = ancast_decrypt_hook[i];
+
+	*(int*)(0x0500A678 - 0x05000000 + 0x081C0000) = generate_bl_t(0x0500A678, ancast_hook_start);
 
 	*(int*)(0x1555500) = 0;
 
