@@ -192,6 +192,11 @@ int _main()
 
 	*(u32*)(0x0500A678 - 0x05000000 + 0x081C0000) = generate_bl_t(0x0500A678, ancast_hook_start);
 
+	// remove various Ancast header size checks (somehow needed for unencrypted fw.img)
+	*(u32*)(0x0500A7C8 - 0x05000000 + 0x081C0000) = 0xbf00bf00; // nop nop
+	*(u16*)(0x0500A7C8 - 0x05000000 + 0x081C0000) = 0xe00f; // b #0x500a7ea
+	*(u32*)(0x0500a7f4 - 0x05000000 + 0x081C0000) = 0x2302e003; // movs r3, #2;  b #0x500a800
+
 	*(int*)(0x1555500) = 0;
 
 	*(volatile u32*)(0x1555500) = 0;
