@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<app version="1">
+  <name>fw.img loader</name>
+  <coder>Wiiubru Team + Maschell + Jan</coder>
+  <version>1.0</version>
+  <url>http://wiiubru.com/forum/forum/</url>
+  <release_date>19.01.2025</release_date>
+  <short_description>Boot a custom firmware file</short_description>
+  <long_description>This program uses the IOSU exploit to boot a custom firmware (CFW) from the SD card.
+
+The file must be placed on the root of the sd card, in sd:/fw.img
+
+This release was the culmination of the effort of some very talented people, who were able to piece this together using public information.
+  </long_description>
+
+</app>
